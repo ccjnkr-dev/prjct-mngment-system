@@ -12,11 +12,20 @@ class ClientDeletionTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_asynchronous_deletion_returns_same_origin_destination_and_flashes_success(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'active' => true]);
+        $item = Client::create(['name' => 'Async deletion']);
+        $this->actingAs($admin)->deleteJson('/clients/'.$item->id)
+            ->assertOk()->assertExactJson(['redirect' => '/clients'])->assertSessionHas('success');
+        $this->assertDatabaseMissing('clients', ['id' => $item->id]);
+    }
+
     public function test_admin_can_delete_client_without_projects(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $client = Client::create(['name' => 'Disposable company', 'contact_name' => 'Contact', 'notes' => 'Details']);
-        $this->actingAs($admin)->get('/clients')->assertOk()->assertSee('Delete Disposable company')->assertSee('Delete client');
+        $this->actingAs($admin)->get('/clients')->assertOk()->assertSee('Delete Disposable company')->assertSee('Delete client')->assertSee('action="/clients/'.$client->id.'"', false);
         $this->get('/clients/'.$client->id.'/edit')->assertOk()->assertSee('Delete Disposable company');
         $this->delete('/clients/'.$client->id)->assertRedirect('/clients')->assertSessionHas('success', 'Client deleted.');
         $this->assertDatabaseMissing('clients', ['id' => $client->id]);

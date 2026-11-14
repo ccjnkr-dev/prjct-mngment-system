@@ -25,6 +25,15 @@ class ProjectDeletionTest extends TestCase
         return $project;
     }
 
+    public function test_asynchronous_deletion_returns_same_origin_destination_and_flashes_success(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'active' => true]);
+        $item = $this->project($admin);
+        $this->actingAs($admin)->deleteJson('/projects/'.$item->id)
+            ->assertOk()->assertExactJson(['redirect' => '/projects'])->assertSessionHas('success');
+        $this->assertDatabaseMissing('projects', ['id' => $item->id]);
+    }
+
     public function test_admin_deletion_cascades_project_records_and_preserves_client_and_drive(): void
     {
         Storage::fake('local');
@@ -38,7 +47,7 @@ class ProjectDeletionTest extends TestCase
         Storage::disk('local')->put('uploads/delete-me', 'staged');
         $asset = $project->assets()->create(['name' => 'Pending', 'user_id' => $admin->id, 'path' => 'uploads/delete-me', 'status' => 'queued']);
         $project->assets()->create(['name' => 'Drive file', 'user_id' => $admin->id, 'status' => 'ready', 'drive_id' => 'preserved-file']);
-        $this->actingAs($admin)->get('/projects/'.$project->id)->assertSee('Delete project')->assertSee('Delete permanently');
+        $this->actingAs($admin)->get('/projects/'.$project->id)->assertSee('Delete project')->assertSee('Delete permanently')->assertSee('action="/projects/'.$project->id.'"', false);
         $this->delete('/projects/'.$project->id)->assertRedirect('/projects')->assertSessionHas('success');
         foreach (['projects', 'tasks', 'checklist_items', 'notes', 'assets', 'activities', 'project_user'] as $table) {
             $this->assertDatabaseCount($table, 0);

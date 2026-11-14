@@ -3,6 +3,12 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
+// Vercel terminates HTTPS before forwarding requests to PHP.
+if (($_ENV['VERCEL'] ?? $_SERVER['VERCEL'] ?? getenv('VERCEL')) === '1') {
+    $_SERVER['HTTPS'] = 'on';
+    $_SERVER['SERVER_PORT'] = '443';
+}
+
 define('LARAVEL_START', microtime(true));
 
 // Determine if the application is in maintenance mode...

@@ -32,7 +32,7 @@ foreach (['app/private', 'app/public', 'framework/cache/data', 'framework/sessio
     }
 }
 // Vercel terminates HTTPS before forwarding to the community PHP server.
-if (getenv('VERCEL') === '1' || ($_SERVER['VERCEL'] ?? null) === '1') {
+if (($_ENV['VERCEL'] ?? $_SERVER['VERCEL'] ?? getenv('VERCEL')) === '1') {
     $_SERVER['HTTPS'] = 'on';
     $_SERVER['SERVER_PORT'] = '443';
 }

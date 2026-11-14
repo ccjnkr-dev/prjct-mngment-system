@@ -6,6 +6,7 @@ use App\Http\Requests\SaveClientRequest;
 use App\Models\Client;
 use App\Services\ClientDirectory;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -48,10 +49,16 @@ class ClientController extends Controller
         return redirect('/clients/'.$client->id.'/edit')->with('success', 'Client information updated.');
     }
 
-    public function destroy(Request $request, Client $client, ClientDirectory $directory): RedirectResponse
+    public function destroy(Request $request, Client $client, ClientDirectory $directory): RedirectResponse|JsonResponse
     {
         abort_unless($request->user()->role === 'admin', 403);
         $directory->delete($client);
+
+        if ($request->expectsJson()) {
+            $request->session()->flash('success', 'Client deleted.');
+
+            return response()->json(['redirect' => '/clients']);
+        }
 
         return redirect('/clients')->with('success', 'Client deleted.');
     }

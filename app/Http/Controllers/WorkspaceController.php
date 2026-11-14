@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\ProjectDeletion;
 use App\Services\ProjectPlanner;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -78,10 +79,16 @@ class WorkspaceController extends Controller
         return back()->with('success', 'Project saved.');
     }
 
-    public function destroy(Project $project, ProjectDeletion $deletion): RedirectResponse
+    public function destroy(Request $request, Project $project, ProjectDeletion $deletion): RedirectResponse|JsonResponse
     {
         Gate::authorize('manage', $project);
         $deletion->delete($project);
+
+        if ($request->expectsJson()) {
+            $request->session()->flash('success', 'Project deleted. Google Drive files have been preserved.');
+
+            return response()->json(['redirect' => '/projects']);
+        }
 
         return redirect('/projects')->with('success', 'Project deleted. Google Drive files have been preserved.');
     }

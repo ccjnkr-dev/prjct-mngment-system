@@ -31,3 +31,10 @@ html[data-theme=dark] .gantt-track{background-image:linear-gradient(to right,#30
 @media(max-width:760px){.topbar-actions{gap:8px}.topbar{gap:8px}.breadcrumb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.auth-theme-control{top:14px;right:18px}}
 
 html[data-theme=dark] .stat>span,html[data-theme=dark] .breadcrumb,html[data-theme=dark] th,html[data-theme=dark] .gantt-header{color:var(--muted)}html[data-theme=dark] :is(input,select,textarea,button,a):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* A native dialog stays above the delete confirmation in the browser top layer. */
+dialog.loading-dialog{width:min(360px,calc(100vw - 40px));margin:auto;padding:32px 24px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);text-align:center;box-shadow:0 20px 60px #0003;cursor:wait}
+dialog.loading-dialog[open]{display:flex;flex-direction:column;align-items:center;gap:16px}
+.loading-dialog::backdrop{background:#102b3266;backdrop-filter:blur(4px)}
+.loading-dialog .loading-brand,.loading-dialog .loading-brand img{width:64px;height:64px}
+.loading-dialog strong{font-size:17px}.loading-dialog p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
