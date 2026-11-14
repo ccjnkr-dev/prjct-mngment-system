@@ -48,7 +48,7 @@ Progress = Done tasks / non-milestone tasks. Checklists do not automatically com
 1. Enable Drive API in a Google Cloud project and configure OAuth consent.
 2. Create a Web OAuth client. Register `APP_URL/settings/drive/callback` as the redirect URI, e.g. `http://localhost:8000/settings/drive/callback` locally.
 3. Put GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in `.env`.
-4. Keep GOOGLE_DRIVE_FOLDER_ID set to `13uiMpoQomushJ_-Dqv85wM9VdZNROjTr`.
+4. Keep GOOGLE_DRIVE_FOLDER_ID set to `1mWIRn0-gTLyY-qBNzsFfgDvS6kroDgNS`.
 5. As an admin, open Integrations and connect a Google account with edit access to that parent folder.
 
 The integration requests the Drive scope to use the pre-existing parent folder. Configure allowed test users in Google during development; external production use may require Google verification. Test-mode refresh tokens can expire. Prefer an appropriate Workspace internal consent configuration when available. The refresh token is encrypted server-side. Members do not need individual upload credentials, but still need Drive sharing permission to open links. No sharing permissions are changed.
@@ -97,3 +97,7 @@ Administrators can delete a project from its header after confirmation. This rem
 The header and sign-in pages include a light/dark mode button. The initial appearance follows the operating system. An explicit selection is saved in this browser and applied before the page styles load, including after sign-out and refresh. Cross-tab changes are synchronized. If browser storage is unavailable, switching still works for the current page.
 
 The **Dashboard** (`/`) provides summary counts, recent project activity, a compact project overview, and upcoming/overdue tasks. **Projects** (`/projects`) is the separate project directory with filters and creation controls. Both pages respect project membership. Sign-in opens Dashboard; project deletion and “All projects” return to Projects.
+
+## Vercel builds
+
+Use Framework Preset **Other**, Build Command `npm run build:vercel`, and Output Directory `dist`. The project now includes a community PHP runtime entrypoint and separate static asset packaging; `npm run build` alone is not the complete Vercel build. See [deploy/VERCEL.md](deploy/VERCEL.md) for import and deployment steps. Uploads are limited to 4 MB on Vercel; other deployments retain the 100 MB default.

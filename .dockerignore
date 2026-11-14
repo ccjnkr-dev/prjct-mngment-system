@@ -10,3 +10,7 @@ storage/framework/views/*
 storage/app/private/*
 database/*.sqlite*
 public/hot
+
+dist
+vercel-php-public
+.vercel

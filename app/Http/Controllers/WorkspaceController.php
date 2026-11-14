@@ -141,7 +141,7 @@ class WorkspaceController extends Controller
     public function asset(Request $r, Project $project): mixed
     {
         Gate::authorize('update', $project);
-        $r->validate(['file' => 'required|file|max:102400']);
+        $r->validate(['file' => 'required|file|max:'.config('uploads.max_kilobytes')]);
         abort_unless(DriveConnection::exists(), 422, 'An administrator must connect Google Drive first.');
         $f = $r->file('file');
         $a = $project->assets()->create(['user_id' => $r->user()->id, 'name' => $f->getClientOriginalName(), 'mime' => $f->getMimeType(), 'size' => $f->getSize(), 'path' => $f->store('uploads', 'local')]);

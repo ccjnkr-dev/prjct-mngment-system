@@ -37,6 +37,7 @@ jobs:
       - run: composer install --prefer-dist --no-interaction --no-progress
       - run: cp .env.example .env && php artisan key:generate
       - run: npm ci && npm run build
+      - run: npm run test:deployment
       - run: vendor/bin/pint --test
       - name: SQLite feature tests
         if: matrix.database == 'sqlite'

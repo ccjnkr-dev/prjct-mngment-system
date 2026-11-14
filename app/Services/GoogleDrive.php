@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Exceptions\DriveSetupException;
 use App\Models\Asset;
 use App\Models\DriveConnection;
 use App\Models\Project;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -33,9 +36,36 @@ class GoogleDrive
 
     public function validateParent(): void
     {
-        $r = $this->api()->get('https://www.googleapis.com/drive/v3/files/'.config('services.google.folder_id'), ['fields' => 'id,mimeType,capabilities(canAddChildren)', 'supportsAllDrives' => 'true'])->throw();
-        if ($r->json('mimeType') !== 'application/vnd.google-apps.folder' || ! $r->json('capabilities.canAddChildren')) {
-            throw new RuntimeException('The connected account needs permission to add files to the parent folder.');
+        try {
+            $response = $this->api()->get('https://www.googleapis.com/drive/v3/files/'.config('services.google.folder_id'), [
+                'fields' => 'id,mimeType,capabilities(canAddChildren)',
+                'supportsAllDrives' => 'true',
+            ])->throw();
+        } catch (RequestException $exception) {
+            $response = $exception->response;
+            $reasons = array_merge(
+                $response->json('error.errors.*.reason', []) ?: [],
+                $response->json('error.details.*.reason', []) ?: [],
+            );
+            $message = match (true) {
+                (bool) array_intersect($reasons, ['accessNotConfigured', 'SERVICE_DISABLED']) => 'Google Drive API is disabled for your OAuth project. Enable Google Drive API in Google Cloud, then reconnect.',
+                (bool) array_intersect($reasons, ['insufficientPermissions', 'ACCESS_TOKEN_SCOPE_INSUFFICIENT']) => 'Google did not grant the required Drive permission. Reconnect and approve the Drive access requested by this app.',
+                $response->status() === 404 => 'The configured Drive folder was not found or is not visible to the connected Google account. Check the folder ID and share the folder directly with that account.',
+                $response->status() === 401 || $response->json('error') === 'invalid_grant' => 'Google rejected the authorization. Reconnect Google Drive and approve access again.',
+                default => 'Google rejected the Drive folder check (HTTP '.$response->status().'). Check folder permissions and any organization restrictions, then reconnect.',
+            };
+            throw new DriveSetupException($message, 0, $exception);
+        } catch (ConnectionException $exception) {
+            $message = str_contains($exception->getMessage(), 'cURL error 60')
+                ? 'The server could not verify Google’s HTTPS certificate. Configure PHP curl.cainfo and openssl.cafile with a valid CA bundle, then reconnect.'
+                : 'The server could not reach Google Drive. Check its internet, DNS, and proxy settings, then reconnect.';
+            throw new DriveSetupException($message, 0, $exception);
+        }
+        if ($response->json('mimeType') !== 'application/vnd.google-apps.folder') {
+            throw new DriveSetupException('The configured Drive item is not a folder. Set GOOGLE_DRIVE_FOLDER_ID to the folder ID, then reconnect.');
+        }
+        if (! $response->json('capabilities.canAddChildren')) {
+            throw new DriveSetupException('The connected Google account cannot add files to this folder. Give that exact account Editor access to the folder, then reconnect.');
         }
     }
 

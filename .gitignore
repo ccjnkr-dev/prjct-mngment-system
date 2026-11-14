@@ -26,3 +26,8 @@ Thumbs.db
 .env.*
 !.env.example
 /database/*.sqlite*
+
+# Vercel generated output and local project metadata
+/dist/
+/vercel-php-public/
+/.vercel/

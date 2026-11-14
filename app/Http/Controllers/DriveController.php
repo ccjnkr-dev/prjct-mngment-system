@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DriveSetupException;
 use App\Models\DriveConnection;
 use App\Services\GoogleDrive;
 use Illuminate\Http\Request;
@@ -58,7 +59,13 @@ class DriveController extends Controller
                 $connection->delete();
             }
 
-            return redirect('/settings/drive')->withErrors(['drive' => 'The account could not access the parent folder. Grant it edit access and reconnect.']);
+            logger()->warning('Google Drive setup check failed.', ['exception_type' => get_class($e)]);
+
+            $message = $e instanceof DriveSetupException
+                ? $e->getMessage()
+                : 'Drive connection validation failed on the server. Check the application logs and reconnect.';
+
+            return redirect('/settings/drive')->withErrors(['drive' => $message]);
         }
 
         return redirect('/settings/drive')->with('success', 'Google Drive connected.');
