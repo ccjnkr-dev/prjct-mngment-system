@@ -1,0 +1,1 @@
+<x-auth-layout><h1>Reset your password.</h1><p class="muted">We’ll email you a secure reset link.</p><form method="post" class="stack">@csrf<label>Email address<input type="email" name="email" required></label><button class="button">Send reset link</button><a href="/login">Back to sign in</a></form></x-auth-layout>

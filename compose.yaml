@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    volumes:
+      - assets:/var/www/html/storage/app/private
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: deploy/nginx.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on: [app]
+    restart: unless-stopped
+  worker:
+    build: .
+    env_file: .env
+    command: php artisan queue:work --tries=3 --timeout=900 --sleep=3
+    volumes:
+      - assets:/var/www/html/storage/app/private
+    restart: unless-stopped
+    stop_grace_period: 16m
+  scheduler:
+    build: .
+    env_file: .env
+    command: php artisan schedule:work
+    volumes:
+      - assets:/var/www/html/storage/app/private
+    restart: unless-stopped
+volumes:
+  assets:

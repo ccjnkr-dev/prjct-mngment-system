@@ -1,47 +1,54 @@
-name: Tests
-
-on:
-  push:
-    branches:
-      - master
-      - '*.x'
-  pull_request:
-  schedule:
-    - cron: '0 0 * * *'
-
+name: Application checks
+on: [push, pull_request]
 permissions:
   contents: read
-
 jobs:
   tests:
     runs-on: ubuntu-latest
-
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        php: [8.2, 8.3, 8.4]
-
-    name: PHP ${{ matrix.php }}
-
+        php: ['8.4', '8.5']
+        database: [sqlite, pgsql]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: gangdev_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testing
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          extensions: dom, curl, mbstring, zip, pcntl, pdo_sqlite, pdo_pgsql
           coverage: none
-
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Copy environment file
-        run: cp .env.example .env
-
-      - name: Generate app key
-        run: php artisan key:generate
-
-      - name: Execute tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - run: cp .env.example .env && php artisan key:generate
+      - run: npm ci && npm run build
+      - run: vendor/bin/pint --test
+      - name: SQLite feature tests
+        if: matrix.database == 'sqlite'
         run: php artisan test
+      - name: PostgreSQL feature tests
+        if: matrix.database == 'pgsql'
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: gangdev_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: testing
+          DB_SSLMODE: disable
+        run: php artisan test --configuration=phpunit.pgsql.xml
