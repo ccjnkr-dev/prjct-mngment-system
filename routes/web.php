@@ -29,6 +29,7 @@ Route::middleware(['auth', ActiveUser::class])->group(function () {
     Route::get('/clients/{client}/edit', [ClientController::class, 'edit']);
     Route::patch('/clients/{client}', [ClientController::class, 'update']);
     Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->name('clients.destroy');
+    Route::get('/projects', [WorkspaceController::class, 'projects'])->name('projects.index');
     Route::post('/projects', [WorkspaceController::class, 'create']);
     Route::get('/projects/{project}', [WorkspaceController::class, 'show']);
     Route::patch('/projects/{project}', [WorkspaceController::class, 'update']);

@@ -39,7 +39,7 @@ class ProjectDeletionTest extends TestCase
         $asset = $project->assets()->create(['name' => 'Pending', 'user_id' => $admin->id, 'path' => 'uploads/delete-me', 'status' => 'queued']);
         $project->assets()->create(['name' => 'Drive file', 'user_id' => $admin->id, 'status' => 'ready', 'drive_id' => 'preserved-file']);
         $this->actingAs($admin)->get('/projects/'.$project->id)->assertSee('Delete project')->assertSee('Delete permanently');
-        $this->delete('/projects/'.$project->id)->assertRedirect('/')->assertSessionHas('success');
+        $this->delete('/projects/'.$project->id)->assertRedirect('/projects')->assertSessionHas('success');
         foreach (['projects', 'tasks', 'checklist_items', 'notes', 'assets', 'activities', 'project_user'] as $table) {
             $this->assertDatabaseCount($table, 0);
         }
@@ -80,7 +80,7 @@ class ProjectDeletionTest extends TestCase
         $this->assertDatabaseHas('projects', ['id' => $project->id]);
         Storage::disk('local')->assertExists('uploads/keep');
         $asset->update(['status' => 'failed']);
-        $this->delete('/projects/'.$project->id)->assertRedirect('/');
+        $this->delete('/projects/'.$project->id)->assertRedirect('/projects');
         Storage::disk('local')->assertMissing('uploads/keep');
     }
 
@@ -89,7 +89,7 @@ class ProjectDeletionTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin', 'active' => true]);
         $remove = $this->project($admin);
         $keep = $this->project($admin);
-        $this->actingAs($admin)->delete('/projects/'.$remove->id)->assertRedirect('/');
+        $this->actingAs($admin)->delete('/projects/'.$remove->id)->assertRedirect('/projects');
         $this->assertDatabaseHas('projects', ['id' => $keep->id]);
         $this->delete('/projects/'.$remove->id)->assertNotFound();
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\TimelineResource;
 use App\Jobs\UploadDriveAsset;
+use App\Models\Activity;
 use App\Models\Asset;
 use App\Models\ChecklistItem;
 use App\Models\Client;
@@ -14,6 +15,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\ProjectDeletion;
 use App\Services\ProjectPlanner;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -22,11 +24,31 @@ class WorkspaceController extends Controller
 {
     public function __construct(private readonly ProjectPlanner $planner) {}
 
-    public function index(Request $r): mixed
+    public function index(Request $request): View
+    {
+        $projects = Project::visibleTo($request->user())->with(['client', 'tasks'])->latest()->get();
+        $openProjects = $projects->whereIn('status', ['active', 'on_hold']);
+        $tasks = $openProjects->flatMap->tasks;
+        $stats = [
+            'total' => $projects->count(),
+            'active' => $projects->where('status', 'active')->count(),
+            'completed' => $projects->where('status', 'completed')->count(),
+            'overdue' => $tasks->filter(fn (Task $task) => $task->status !== 'done' && $task->due_date && $task->due_date < today()->toDateString())->count(),
+        ];
+        $deadlines = $openProjects->flatMap(fn (Project $project) => $project->tasks
+            ->filter(fn (Task $task) => $task->status !== 'done' && $task->due_date)
+            ->map(fn (Task $task) => ['task' => $task, 'project' => $project]))
+            ->sortBy(fn (array $entry) => $entry['task']->due_date)->take(8);
+        $activities = Activity::whereIn('project_id', $projects->pluck('id'))->with('user')->latest()->limit(10)->get();
+
+        return view('dashboard', compact('projects', 'stats', 'deadlines', 'activities'));
+    }
+
+    public function projects(Request $r): mixed
     {
         $projects = Project::visibleTo($r->user())->with(['client', 'members', 'tasks.assignee'])->when($r->filled('q'), fn ($q) => $q->where('name', 'like', '%'.$r->string('q').'%'))->when($r->filled('status'), fn ($q) => $q->where('status', $r->string('status')))->when($r->filled('client'), fn ($q) => $q->where('client_id', $r->integer('client')))->when($r->filled('assignee'), fn ($q) => $q->whereHas('tasks', fn ($t) => $t->where('assignee_id', $r->integer('assignee'))))->latest()->get();
 
-        return view('dashboard', ['projects' => $projects, 'clients' => Client::when($r->user()->role !== 'admin', fn ($q) => $q->whereHas('projects', fn ($p) => $p->visibleTo($r->user())))->orderBy('name')->get(), 'users' => User::where('active', true)->when($r->user()->role !== 'admin', fn ($q) => $q->whereHas('projects', fn ($p) => $p->visibleTo($r->user())))->get()]);
+        return view('projects', ['projects' => $projects, 'clients' => Client::when($r->user()->role !== 'admin', fn ($q) => $q->whereHas('projects', fn ($p) => $p->visibleTo($r->user())))->orderBy('name')->get(), 'users' => User::where('active', true)->when($r->user()->role !== 'admin', fn ($q) => $q->whereHas('projects', fn ($p) => $p->visibleTo($r->user())))->get()]);
     }
 
     public function show(Project $project): mixed
@@ -61,7 +83,7 @@ class WorkspaceController extends Controller
         Gate::authorize('manage', $project);
         $deletion->delete($project);
 
-        return redirect('/')->with('success', 'Project deleted. Google Drive files have been preserved.');
+        return redirect('/projects')->with('success', 'Project deleted. Google Drive files have been preserved.');
     }
 
     public function task(Request $r, Project $project, ?Task $task = null): mixed
